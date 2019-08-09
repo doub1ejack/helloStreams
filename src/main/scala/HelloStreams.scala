@@ -8,16 +8,21 @@ import scala.concurrent._
 import scala.concurrent.duration._
 import java.nio.file.Paths
 
+import java.io.File
+
 // This application is a simple walkthrough of the lessons outlined in the
 // akka streams quickstart webpage:
 //    http://doc.akka.io/docs/akka/current/scala/stream/stream-quickstart.html
 object Main extends App {
+    implicit val system = ActorSystem("streamapp")
+    implicit val materializer = ActorMaterializer()
   
 
   // 4 different examples of akka streams:
   val simpleStreamSource = simpleStream()
   // streamToFile(simpleStreamSource)
   // runClosedGraph()
+  // backpressured(silent=true)
 
 
   // A very simple stream consisting entirely of a Source which
@@ -157,4 +162,49 @@ object Main extends App {
     val runnableGraphJob = RunnableGraph.fromGraph(myGraph)
     runnableGraphJob.run()
   } 
+
+
+  // example of backpressure from https://github.com/skapadia/akka-streams-backpressure
+  def backpressured(silent: Boolean) = {
+    // implicit val system = ActorSystem("streamapp")
+    // implicit val materializer = ActorMaterializer()
+    val source: Source[Int, NotUsed] = Source(1 to 20)
+    val factorials: Source[BigInt, NotUsed] = source.scan(BigInt(1))((acc, next) => acc * next)
+    val sink1 = fileSink("unthrottled.txt", silent)
+    val sink2 = fileSink("backpressured.txt", silent)
+
+    // collects 10 elements before passing them through at a rate of 1/sec
+    // NOTE: the backpressure will prevent the source from broadcasting elements, so 
+    // expect to see sink1 process the first 10 very quickly, then match the speed of 
+    // bufferedSink2 because the pressure has backed up the system to the source.
+    val bufferedSink2 = Flow[String]
+      .buffer(10, OverflowStrategy.backpressure)
+      .via(Flow[String].throttle(1, 1.second, 1, ThrottleMode.shaping))
+      .toMat(sink2)(Keep.right)
+
+    // create the runnable graph
+    val g = RunnableGraph.fromGraph(GraphDSL.create() { implicit b =>
+      import GraphDSL.Implicits._
+
+      val bcast = b.add(Broadcast[String](2))   // split into 2 flows
+      factorials.map(_.toString) ~> bcast.in    // calc factorial
+      bcast.out(0) ~> sink1                     // full throttle output!!
+      bcast.out(1) ~> bufferedSink2             // buffered output 
+      ClosedShape
+    })
+
+    g.run()
+  }
+
+  /**
+   * Returns a flow that writes the input to a file.
+   * @param filename File to write to
+   * @param silent Optionally echos input out to the console.
+   */ 
+  def fileSink(filename: String, silent: Boolean): Sink[String, Future[IOResult]] = {
+    Flow[String]
+      .alsoTo(Sink.foreach(s => if(!silent) println(s"$filename: $s")))
+      .map(s => ByteString(s + "\n"))
+      .toMat(FileIO.toFile(new File(filename)))(Keep.right)
+  }
 }
