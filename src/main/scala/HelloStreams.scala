@@ -13,9 +13,11 @@ import java.nio.file.Paths
 //    http://doc.akka.io/docs/akka/current/scala/stream/stream-quickstart.html
 object Main extends App {
   
+
+  // 4 different examples of akka streams:
   val simpleStreamSource = simpleStream()
   // streamToFile(simpleStreamSource)
-  // complexStream()
+  // runClosedGraph()
 
 
   // A very simple stream consisting entirely of a Source which
@@ -50,6 +52,13 @@ object Main extends App {
     source
   }
 
+
+
+
+
+
+
+
   /** This function demonstraits that a Source is "just a description 
    *  of what you want to run" and can be reused in different ways. 
    *  In this function, we use the source returned from `simpleStream()`
@@ -83,6 +92,13 @@ object Main extends App {
     }
   }
 
+
+
+
+
+
+
+
   /**
    * An example of a complex stream that composes a closed graph. It's all 
    * framework and no logic, so if you call this function it just runs endlessly
@@ -90,10 +106,10 @@ object Main extends App {
    * are assembled into a complex stream.  
    * See: http://doc.akka.io/docs/akka/current/scala/stream/stream-composition.html#composing-complex-systems
    */
-  def complexStream() = {
+  def runClosedGraph() = {
     import GraphDSL.Implicits._
 
-    // A graph is built up out of flows, sinks and sources.  If all we had was 
+    // A graph is built up out of sources, flows, and sinks.  If all we had was 
     // those three elements, then our stream would always be a straight line since
     // each of those has a maximum of one input or output.  Graphs allow us to 
     // construct a stream where logic can fan out and take different paths, or 
@@ -110,8 +126,8 @@ object Main extends App {
 
       // Some things to notice:
       // - A is the only source of data
-      // - B and E fan out to C & D and F & G (respectively)
-      // - C and F fan in from B & F and E & C (respectively)
+      // - B fans out to C & D, and E fans out to F & G
+      // - C fans in from B & F, and F fans in from E & C
       // - G is the only element that doesn't pass data on (a Sink)
       // 
       // Also, it is very cool that the code for the graph can be represented
