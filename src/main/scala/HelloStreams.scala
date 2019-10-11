@@ -14,6 +14,9 @@ import java.io.File
 // akka streams quickstart webpage:
 //    http://doc.akka.io/docs/akka/current/scala/stream/stream-quickstart.html
 object Main extends App {
+
+    // Streams are run by an actor system so we need to provide 
+    // the implict actor system and a materializer
     implicit val system = ActorSystem("streamapp")
 
     // Materializers run graphs (or streams).  The stream itself is declartive and only
