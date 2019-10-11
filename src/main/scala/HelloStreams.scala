@@ -15,6 +15,11 @@ import java.io.File
 //    http://doc.akka.io/docs/akka/current/scala/stream/stream-quickstart.html
 object Main extends App {
     implicit val system = ActorSystem("streamapp")
+
+    // Materializers run graphs (or streams).  The stream itself is declartive and only
+    // states what should happen; the Materializer is kind of the environment the stream
+    // executes within.  Different Materializers can provide different runtime results 
+    // for the same graph.
     implicit val materializer = ActorMaterializer()
   
 
