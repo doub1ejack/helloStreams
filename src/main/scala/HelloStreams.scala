@@ -14,7 +14,15 @@ import java.io.File
 // akka streams quickstart webpage:
 //    http://doc.akka.io/docs/akka/current/scala/stream/stream-quickstart.html
 object Main extends App {
+
+    // Streams are run by an actor system so we need to provide 
+    // the implict actor system and a materializer
     implicit val system = ActorSystem("streamapp")
+
+    // Materializers run graphs (or streams).  The stream itself is declartive and only
+    // states what should happen; the Materializer is kind of the environment the stream
+    // executes within.  Different Materializers can provide different runtime results 
+    // for the same graph.
     implicit val materializer = ActorMaterializer()
   
 
@@ -25,15 +33,14 @@ object Main extends App {
   // backpressured(silent=true)
 
 
+
+
+
+
+
   // A very simple stream consisting entirely of a Source which
   // generates a range of integers
   def simpleStream() = {
-
-    // Streams are run by an actor system so we need to provide 
-    // the implict actor system and a materializer used by the 
-    // akka streams `run` functions (such as `source.runForeach` below)
-    implicit val system = ActorSystem("QuickStart")
-    implicit val materializer = ActorMaterializer()
 
     // A simple source that generates a series of integers
     val source: Source[Int, NotUsed] = Source(1 to 10)
@@ -70,8 +77,6 @@ object Main extends App {
    *  as the source of input for a text file we're writing to disk.
    */
   def streamToFile(source: Source[Int,NotUsed]) = {
-    implicit val system = ActorSystem("QuickStart")
-    implicit val materializer = ActorMaterializer()
     implicit val ec = system.dispatcher
     val filename = "factorials.txt"
 
@@ -156,18 +161,22 @@ object Main extends App {
     // take myGraph and build an actor system that executes this closed graph.
     // Doing so is anaologous to the actor system that the `simpleStream()` 
     // function used when it called `source.runForeach()`
-    implicit val system = ActorSystem("QuickStart")
-    implicit val materializer = ActorMaterializer()
-
     val runnableGraphJob = RunnableGraph.fromGraph(myGraph)
     runnableGraphJob.run()
   } 
 
 
+
+
+
+
+
+
+
+
+
   // example of backpressure from https://github.com/skapadia/akka-streams-backpressure
   def backpressured(silent: Boolean) = {
-    // implicit val system = ActorSystem("streamapp")
-    // implicit val materializer = ActorMaterializer()
     val source: Source[Int, NotUsed] = Source(1 to 20)
     val factorials: Source[BigInt, NotUsed] = source.scan(BigInt(1))((acc, next) => acc * next)
     val sink1 = fileSink("unthrottled.txt", silent)
@@ -185,8 +194,8 @@ object Main extends App {
     // create the runnable graph
     val g = RunnableGraph.fromGraph(GraphDSL.create() { implicit b =>
       import GraphDSL.Implicits._
-
       val bcast = b.add(Broadcast[String](2))   // split into 2 flows
+
       factorials.map(_.toString) ~> bcast.in    // calc factorial
       bcast.out(0) ~> sink1                     // full throttle output!!
       bcast.out(1) ~> bufferedSink2             // buffered output 
