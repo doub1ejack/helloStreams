@@ -1,2 +1,3 @@
-A very simple test of akka streams.  Not really good for much except me experimenting with some of the basics.
+A simple test of akka streams designed to demo the concept of "backpressure". 
 
+Although this is just a sample demo, I've used the same framework in production. For example, when building a system that drew content from multiple microservices, we used this technique to ensure that the entire pipeline respected the pace of the slowest microservice. For example, one service would enevitably hit its threshold CPU limit before another. Although they scale horizontally, it takes a few minutes to spin up a new VM (and of course there is an upper scaling limit). Using Akka streams this way ensured that the entire system could slow down and wait for constrained services to get their capacity back up.
