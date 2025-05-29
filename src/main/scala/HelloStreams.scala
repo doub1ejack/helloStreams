@@ -26,11 +26,30 @@ object Main extends App {
     implicit val materializer = ActorMaterializer()
   
 
-  // 4 different examples of akka streams:
+  // DEMOS: 4 different examples of akka streams. Uncomment each one to run it.
+  // Run in docker (recompiling each time) with: 
+  //  docker run -it --rm -v $(pwd):/app -w /app scala:2.11.7 scala HelloStreams.scala
+
+  // 1. The simplest possbile stream to intro basic components & process
   val simpleStreamSource = simpleStream()
+
+  // 2. A more complex stream that takes the source from the first example
   // streamToFile(simpleStreamSource)
+
+  // 3. A stream that shows a complex pipeline (and no logic).
   // runClosedGraph()
-  // backpressured(silent=true)
+  
+  // 4. A stream that demonstrates backpressure and buffering
+  /* 
+  implicit val ec = system.dispatcher
+  backpressured(silent=true)
+   
+  // Sleep to keep the application running
+  Thread.sleep(30000) // Sleep for 30 seconds
+  
+  // Then gracefully terminate
+  system.terminate()
+  */ 
 
 
 
@@ -63,6 +82,15 @@ object Main extends App {
     // returning our source to demonstrait our next point in `streamToFile()`
     source
   }
+
+
+
+
+
+
+
+
+
 
 
 
@@ -175,9 +203,22 @@ object Main extends App {
 
 
 
-  // example of backpressure from https://github.com/skapadia/akka-streams-backpressure
+  // Example of backpressure from https://github.com/skapadia/akka-streams-backpressure
+  /*  To demo this, `tail -f` the two output files in terminals side by side and then run 
+      this app. You should see the first 10 factorials written to `unthrottled.txt` immediately,
+      and then the rest of the factorials written to `backpressured.txt` at a slower rate. 
+      This happens b/c the bufferedSink2 uses a backpressure strategy to tell the provider 
+      of the source (factorials.map()) to slow down.  The source then produces elements at
+      the slower rate of bufferedSink2 (1/sec). 
+      - NOTE: the backpressure is not a "pause" in the stream, but rather a slowing down of the
+              source's production of elements.  The stream is still running, but the source is 
+              producing elements at a slower rate.
+      - NOTE: the `factorials` source produces elements for sink1 and bufferedSink2 at the same
+              rate, but the sinks are receiveing different values.
+  */ 
   def backpressured(silent: Boolean) = {
-    val source: Source[Int, NotUsed] = Source(1 to 20)
+    // Source with more elements to better demonstrate the effect over time
+    val source: Source[Int, NotUsed] = Source(1 to 30)
     val factorials: Source[BigInt, NotUsed] = source.scan(BigInt(1))((acc, next) => acc * next)
     val sink1 = fileSink("unthrottled.txt", silent)
     val sink2 = fileSink("backpressured.txt", silent)
@@ -187,7 +228,7 @@ object Main extends App {
     // expect to see sink1 process the first 10 very quickly, then match the speed of 
     // bufferedSink2 because the pressure has backed up the system to the source.
     val bufferedSink2 = Flow[String]
-      .buffer(10, OverflowStrategy.backpressure)
+      .buffer(15, OverflowStrategy.backpressure)
       .via(Flow[String].throttle(1, 1.second, 1, ThrottleMode.shaping))
       .toMat(sink2)(Keep.right)
 
